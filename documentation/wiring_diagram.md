@@ -12,7 +12,7 @@
   │ ESP32       │   │ Green pair : GND return           │   │ ESP32           │
   │ JSN-SR04T   │   │ Brown pair : spare                │   │ MAX485          │
   │ MAX485      │   └──────────────────────────────────┘   │ OLED SSD1306    │
-  │ LM2596      │                                           │ (pending)       │
+  │ LM2596      │                                           │                 │
   └─────────────┘                                           └─────────────────┘
         ▲                                                          │
         │ 12 V DC input                                            │ 12 V DC adapter
@@ -141,7 +141,7 @@ Set LM2596 output to **5.0 V** with the trim potentiometer before connecting the
 
 ---
 
-### OLED SSD1306 128×64 → ESP32 (I2C) — Pending Hardware
+### OLED SSD1306 128×64 → ESP32 (I2C)
 
 ```
   SSD1306 OLED                  ESP32 (Indoor)
@@ -178,8 +178,8 @@ Set LM2596 output to **5.0 V** with the trim potentiometer before connecting the
 | 25   | UART1 RX        | MAX485 RO                 |
 | 26   | UART1 TX        | MAX485 DI (unused)        |
 | 4    | RS485 DE/RE     | MAX485 DE + /RE (LOW)     |
-| 21   | I2C SDA         | OLED SDA (pending)        |
-| 22   | I2C SCL         | OLED SCL (pending)        |
+| 21   | I2C SDA         | OLED SDA                  |
+| 22   | I2C SCL         | OLED SCL                  |
 | VIN  | Power in        | 12 V adapter or 5 V reg.  |
 | GND  | Ground          | Common GND                |
 

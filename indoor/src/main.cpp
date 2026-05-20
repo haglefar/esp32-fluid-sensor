@@ -4,9 +4,8 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-// Uncomment the two lines below when OLED hardware arrives:
-// #include <Wire.h>
-// #include <U8g2lib.h>
+#include <Wire.h>
+#include <U8g2lib.h>
 
 // --- Pin assignments ---
 // MAX485 RS485 transceiver (UART1) — same pins as outdoor unit for symmetry
@@ -14,10 +13,10 @@
 #define RS485_TX   26
 #define RS485_DE_RE 4   // Keep LOW (receive) at all times on the indoor unit
 
-// OLED display I2C (SSD1306 128x64) — uncomment when hardware arrives
-// #define OLED_SDA 21
-// #define OLED_SCL 22
-// U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, U8X8_PIN_NONE);
+// OLED display I2C (SSD1306 128x64)
+#define OLED_SDA 21
+#define OLED_SCL 22
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C display(U8G2_R0, U8X8_PIN_NONE);
 
 // --- Tank configuration (must match outdoor unit) ---
 #define TANK_DEPTH_MM 2000
@@ -100,24 +99,24 @@ void updateBLE(uint16_t distance_mm, uint16_t level_mm, uint8_t level_pct) {
     }
 }
 
-// ------- OLED update (enable when hardware arrives) -------
-// void updateDisplay(uint16_t distance_mm, uint16_t level_mm, uint8_t level_pct) {
-//     display.clearBuffer();
-//     display.setFont(u8g2_font_ncenB14_tr);
-//     char line[32];
-//
-//     snprintf(line, sizeof(line), "Fill: %u%%", level_pct);
-//     display.drawStr(0, 18, line);
-//
-//     display.setFont(u8g2_font_ncenB08_tr);
-//     snprintf(line, sizeof(line), "Level: %u mm", level_mm);
-//     display.drawStr(0, 36, line);
-//
-//     snprintf(line, sizeof(line), "Dist:  %u mm", distance_mm);
-//     display.drawStr(0, 52, line);
-//
-//     display.sendBuffer();
-// }
+// ------- OLED update -------
+void updateDisplay(uint16_t distance_mm, uint16_t level_mm, uint8_t level_pct) {
+    display.clearBuffer();
+    display.setFont(u8g2_font_ncenB14_tr);
+    char line[32];
+
+    snprintf(line, sizeof(line), "Fill: %u%%", level_pct);
+    display.drawStr(0, 18, line);
+
+    display.setFont(u8g2_font_ncenB08_tr);
+    snprintf(line, sizeof(line), "Level: %u mm", level_mm);
+    display.drawStr(0, 36, line);
+
+    snprintf(line, sizeof(line), "Dist:  %u mm", distance_mm);
+    display.drawStr(0, 52, line);
+
+    display.sendBuffer();
+}
 
 void setup() {
     Serial.begin(115200);
@@ -126,13 +125,12 @@ void setup() {
     pinMode(RS485_DE_RE, OUTPUT);
     digitalWrite(RS485_DE_RE, LOW);   // Always receive on indoor unit
 
-    // Uncomment when OLED arrives:
-    // Wire.begin(OLED_SDA, OLED_SCL);
-    // display.begin();
-    // display.clearBuffer();
-    // display.setFont(u8g2_font_ncenB08_tr);
-    // display.drawStr(0, 14, "Waiting...");
-    // display.sendBuffer();
+    Wire.begin(OLED_SDA, OLED_SCL);
+    display.begin();
+    display.clearBuffer();
+    display.setFont(u8g2_font_ncenB08_tr);
+    display.drawStr(0, 14, "Waiting...");
+    display.sendBuffer();
 
     BLEDevice::init(BLE_DEVICE_NAME);
     BLEServer *server = BLEDevice::createServer();
@@ -173,7 +171,7 @@ void loop() {
                       distance_mm, level_mm, level_pct);
 
         updateBLE(distance_mm, level_mm, level_pct);
-        // updateDisplay(distance_mm, level_mm, level_pct);
+        updateDisplay(distance_mm, level_mm, level_pct);
     }
 
     delay(10);
