@@ -39,18 +39,22 @@ Set LM2596 output to **5.0 V** with the trim potentiometer before connecting the
 
 ---
 
-### JSN-SR04T Ultrasonic Sensor → ESP32 (UART2)
+### JSN-SR04T Ultrasonic Sensor → ESP32 (trigger/echo)
+
+This module uses trigger/echo mode (HC-SR04 style). Despite the pin labels
+"RX" and "TX" on the board, they are the trigger input and echo output
+respectively — not a UART interface.
 
 ```
   JSN-SR04T                     ESP32 (Outdoor)
   ─────────                     ───────────────
   VCC  ───────────────────────► 5 V rail
   GND  ───────────────────────► GND
-  TX   ───────────────────────► GPIO 16  (SENSOR_RX / UART2 RX)
-  RX   ───────────────────────► GPIO 17  (SENSOR_TX / UART2 TX)
+  RX   (Trig input)  ─────────► GPIO 17  (TRIG_PIN — 10 µs pulse output)
+  TX   (Echo output) ─────────► GPIO 16  (ECHO_PIN — pulse width input)
 ```
 
-> The JSN-SR04T operates on 5 V. Its TX output is 5 V logic — most ESP32 GPIO
+> The JSN-SR04T operates on 5 V. Its echo output is 5 V logic — most ESP32 GPIO
 > inputs tolerate this, but a 10 kΩ series resistor on the TX→GPIO16 line is a
 > safe addition if you want to be careful.
 
@@ -163,8 +167,8 @@ Set LM2596 output to **5.0 V** with the trim potentiometer before connecting the
 
 | GPIO | Function        | Connected to              |
 |------|-----------------|---------------------------|
-| 16   | UART2 RX        | JSN-SR04T TX              |
-| 17   | UART2 TX        | JSN-SR04T RX              |
+| 16   | Echo input      | JSN-SR04T TX/Echo         |
+| 17   | Trig output     | JSN-SR04T RX/Trig         |
 | 25   | UART1 RX        | MAX485 RO                 |
 | 26   | UART1 TX        | MAX485 DI                 |
 | 4    | RS485 DE/RE     | MAX485 DE + /RE (tied)    |
