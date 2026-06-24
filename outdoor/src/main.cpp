@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <esp_task_wdt.h>
+#include <soc/rtc_cntl_reg.h>
 
 // --- Watchdog ---
 // Resets the device if loop() blocks for longer than this
@@ -48,6 +49,10 @@ uint16_t averagedDistanceMM();
 void     sendRS485Distance(uint16_t distance_mm);
 
 void setup() {
+    // Disable brownout detector — LM2596 output sags during startup inrush,
+    // causing a reset loop without this. Replace with a bulk cap when possible.
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
     Serial.begin(115200);
 
     // Watchdog: triggers a hard reset if loop() hangs for WDT_TIMEOUT_S seconds
@@ -57,6 +62,13 @@ void setup() {
     pinMode(TRIG_PIN, OUTPUT);
     pinMode(ECHO_PIN, INPUT);
     digitalWrite(TRIG_PIN, LOW);
+
+    // TRIG_PIN may have floated HIGH during boot while brownout is disabled,
+    // firing a spurious measurement and leaving ECHO stuck HIGH. Wait for idle.
+    {
+        uint32_t t = millis();
+        while (digitalRead(ECHO_PIN) == HIGH && (millis() - t) < 1000) delay(10);
+    }
 
     rs485Serial.begin(9600, SERIAL_8N1, RS485_RX, RS485_TX);
     pinMode(RS485_DE_RE, OUTPUT);
