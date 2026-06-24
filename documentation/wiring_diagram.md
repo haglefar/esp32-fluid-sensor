@@ -51,12 +51,14 @@ respectively — not a UART interface.
   VCC  ───────────────────────► 5 V rail
   GND  ───────────────────────► GND
   RX   (Trig input)  ─────────► GPIO 17  (TRIG_PIN — 10 µs pulse output)
-  TX   (Echo output) ─────────► GPIO 16  (ECHO_PIN — pulse width input)
+  TX   (Echo output) ─────────► GPIO 34  (ECHO_PIN — pulse width input)
 ```
 
 > The JSN-SR04T operates on 5 V. Its echo output is 5 V logic — most ESP32 GPIO
-> inputs tolerate this, but a 10 kΩ series resistor on the TX→GPIO16 line is a
+> inputs tolerate this, but a 10 kΩ series resistor on the TX→GPIO34 line is a
 > safe addition if you want to be careful.
+> GPIO 34 is used instead of GPIO 16 — GPIO 16 (UART2 RX) holds a HIGH state
+> during ESP32 cold boot that conflicts with the sensor's echo output.
 
 ---
 
@@ -167,7 +169,7 @@ respectively — not a UART interface.
 
 | GPIO | Function        | Connected to              |
 |------|-----------------|---------------------------|
-| 16   | Echo input      | JSN-SR04T TX/Echo         |
+| 34   | Echo input      | JSN-SR04T TX/Echo         |
 | 17   | Trig output     | JSN-SR04T RX/Trig         |
 | 25   | UART1 RX        | MAX485 RO                 |
 | 26   | UART1 TX        | MAX485 DI                 |

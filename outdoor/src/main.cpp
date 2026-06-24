@@ -11,7 +11,7 @@
 // JSN-SR04T ultrasonic sensor (trigger/echo mode)
 // Module labels these pins "RX" (trig input) and "TX" (echo output)
 #define TRIG_PIN 17   // GPIO17 → JSN-SR04T RX/Trig
-#define ECHO_PIN 16   // GPIO16 → JSN-SR04T TX/Echo
+#define ECHO_PIN 34   // GPIO34 → JSN-SR04T TX/Echo
 
 // MAX485 RS485 transceiver (UART1)
 #define RS485_RX    25
@@ -53,22 +53,21 @@ void setup() {
     // causing a reset loop without this. Replace with a bulk cap when possible.
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
+    // GPIO17 is UART2 TX and idles HIGH during ESP32 boot. Drive it LOW
+    // immediately so the sensor does not see a HIGH on TRIG during its own
+    // power-on sequence, which latches it into a non-responsive state.
+    // Then wait 500 ms for the sensor to complete its internal boot.
+    pinMode(TRIG_PIN, OUTPUT);
+    digitalWrite(TRIG_PIN, LOW);
+    delay(500);
+
     Serial.begin(115200);
 
     // Watchdog: triggers a hard reset if loop() hangs for WDT_TIMEOUT_S seconds
     esp_task_wdt_init(WDT_TIMEOUT_S, true);
     esp_task_wdt_add(NULL);
 
-    pinMode(TRIG_PIN, OUTPUT);
     pinMode(ECHO_PIN, INPUT);
-    digitalWrite(TRIG_PIN, LOW);
-
-    // TRIG_PIN may have floated HIGH during boot while brownout is disabled,
-    // firing a spurious measurement and leaving ECHO stuck HIGH. Wait for idle.
-    {
-        uint32_t t = millis();
-        while (digitalRead(ECHO_PIN) == HIGH && (millis() - t) < 1000) delay(10);
-    }
 
     rs485Serial.begin(9600, SERIAL_8N1, RS485_RX, RS485_TX);
     pinMode(RS485_DE_RE, OUTPUT);
@@ -107,23 +106,37 @@ void loop() {
 
 // Trigger a measurement with a 10 µs pulse and measure the echo duration.
 // Returns distance in mm, or 0 on timeout.
+//
+// Trigger is sent FIRST regardless of ECHO state. On cold boot the sensor
+// holds ECHO HIGH during its power-on sequence; the trigger breaks that stuck
+// state. After the trigger we wait for ECHO to go LOW (stuck measurement
+// clears), then HIGH (our echo starts), then measure the pulse width.
 uint16_t readSensorDistanceMM() {
-    // Wait for echo to settle LOW before triggering (up to 50 ms)
-    uint32_t t0 = millis();
-    while (digitalRead(ECHO_PIN) == HIGH) {
-        if (millis() - t0 > 50) return 0;
-    }
-
     digitalWrite(TRIG_PIN, LOW);
     delayMicroseconds(2);
     digitalWrite(TRIG_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
 
-    // pulseIn timeout = 30 000 µs, covers the full 4.5 m range
-    uint32_t duration = pulseIn(ECHO_PIN, HIGH, 30000);
-    if (duration == 0) return 0;
+    uint32_t t0 = micros();
 
+    // If ECHO is stuck HIGH, wait for the sensor to clear it (≤ 38 ms max range)
+    while (digitalRead(ECHO_PIN) == HIGH) {
+        if (micros() - t0 > 60000) return 0;
+    }
+
+    // Wait for our echo pulse to start
+    while (digitalRead(ECHO_PIN) == LOW) {
+        if (micros() - t0 > 60000) return 0;
+    }
+    uint32_t echo_start = micros();
+
+    // Measure echo pulse width
+    while (digitalRead(ECHO_PIN) == HIGH) {
+        if (micros() - t0 > 90000) return 0;
+    }
+
+    uint32_t duration = micros() - echo_start;
     // distance_mm = duration_µs × (340 m/s ÷ 2) converted to mm/µs = × 17 / 100
     return (uint16_t)((uint32_t)duration * 17 / 100);
 }
